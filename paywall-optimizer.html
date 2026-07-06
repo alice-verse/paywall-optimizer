@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Paywall Leak — A Subscription Funnel Case Study</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#141a29;
+    --ink-soft:#232b40;
+    --paper:#f7f1e4;
+    --paper-dim:#efe6d3;
+    --marigold:#e2a63b;
+    --marigold-dim:#a97a2d;
+    --teal:#3f9c7a;
+    --rust:#c4523f;
+    --line:rgba(247,241,228,0.14);
+    --text-main:#f7f1e4;
+    --text-dim:#b8bccb;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--text-main);
+    font-family:'Space Grotesk',sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 28px;}
+  h1,h2,h3{font-family:'Source Serif 4',serif;font-weight:700;margin:0;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  a{color:inherit;}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    padding:88px 0 64px;
+    border-bottom:1px solid var(--line);
+    position:relative;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--marigold);
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:22px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:26px;height:1px;background:var(--marigold);display:inline-block;
+  }
+  .hero h1{
+    font-size:clamp(34px,5.2vw,54px);
+    line-height:1.08;
+    letter-spacing:-0.01em;
+    max-width:14ch;
+  }
+  .hero h1 em{
+    font-style:italic;
+    color:var(--marigold);
+  }
+  .hero p.dek{
+    font-size:17px;
+    color:var(--text-dim);
+    max-width:56ch;
+    margin-top:22px;
+  }
+  .byline{
+    margin-top:36px;
+    display:flex;
+    gap:24px;
+    flex-wrap:wrap;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--text-dim);
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+  }
+  .byline b{color:var(--paper);}
+
+  /* ---------- SECTION LABELS ---------- */
+  .section{padding:64px 0;border-bottom:1px solid var(--line);}
+  .section-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--marigold-dim);
+    margin-bottom:14px;
+  }
+  .section h2{font-size:clamp(24px,3vw,32px);max-width:24ch;margin-bottom:14px;}
+  .section > p.lead{color:var(--text-dim);max-width:62ch;font-size:15.5px;margin-bottom:36px;}
+
+  /* ---------- TOGGLE ---------- */
+  .toggle-row{
+    display:flex;align-items:center;gap:16px;margin-bottom:40px;flex-wrap:wrap;
+  }
+  .toggle{
+    position:relative;
+    width:280px;height:46px;
+    background:var(--ink-soft);
+    border:1px solid var(--line);
+    border-radius:999px;
+    display:flex;
+    padding:4px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .toggle .pill{
+    position:absolute;
+    top:4px;left:4px;
+    width:calc(50% - 4px);
+    height:38px;
+    background:var(--marigold);
+    border-radius:999px;
+    transition:transform 0.35s cubic-bezier(.65,0,.35,1), background 0.35s;
+    z-index:0;
+  }
+  body[data-state="proposed"] .toggle .pill{
+    transform:translateX(calc(100% + 0px));
+    background:var(--teal);
+  }
+  .toggle span{
+    position:relative;z-index:1;
+    flex:1;
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:600;
+    color:var(--text-dim);
+    transition:color 0.3s;
+  }
+  body[data-state="current"] .toggle span.s-current,
+  body[data-state="proposed"] .toggle span.s-proposed{
+    color:var(--ink);
+  }
+  .toggle-tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--text-dim);
+  }
+
+  /* ---------- FUNNEL ---------- */
+  .funnel{display:flex;flex-direction:column;gap:2px;}
+  .fstage{
+    display:grid;
+    grid-template-columns:150px 1fr 130px;
+    align-items:center;
+    gap:18px;
+    padding:14px 0;
+  }
+  .fstage .flabel{font-size:13.5px;color:var(--text-dim);}
+  .fstage .fbar-track{
+    height:34px;background:rgba(247,241,228,0.06);border-radius:6px;overflow:hidden;position:relative;
+  }
+  .fstage .fbar{
+    height:100%;
+    background:linear-gradient(90deg,var(--marigold-dim),var(--marigold));
+    border-radius:6px;
+    width:0%;
+    transition:width 0.7s cubic-bezier(.65,0,.35,1);
+  }
+  body[data-state="proposed"] .fstage .fbar{
+    background:linear-gradient(90deg,var(--teal),#57c79b);
+  }
+  .fstage .fnum{
+    text-align:right;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;
+    color:var(--paper);
+    font-weight:500;
+  }
+  .fstage .fnum small{display:block;color:var(--text-dim);font-size:11px;font-weight:400;margin-top:2px;}
+  .leak{
+    display:flex;align-items:center;gap:8px;
+    padding:6px 0 6px 150px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    color:var(--rust);
+  }
+  .leak::before{content:"↳ ";}
+  body[data-state="proposed"] .leak.leak-fixed{color:var(--teal);}
+
+  .lift-banner{
+    margin-top:28px;
+    padding:18px 22px;
+    border:1px solid var(--line);
+    border-left:3px solid var(--marigold);
+    background:rgba(226,166,59,0.06);
+    border-radius:4px;
+    font-size:14px;
+    color:var(--text-dim);
+    transition:border-color 0.3s, background 0.3s;
+  }
+  body[data-state="proposed"] .lift-banner{
+    border-left-color:var(--teal);
+    background:rgba(63,156,122,0.08);
+  }
+  .lift-banner b{color:var(--paper);font-family:'IBM Plex Mono',monospace;}
+
+  /* ---------- FRICTION LIST ---------- */
+  .friction-grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:18px;
+  }
+  @media(max-width:760px){.friction-grid{grid-template-columns:1fr;}}
+  .fcard{
+    background:var(--ink-soft);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:22px;
+  }
+  .fcard .ftag{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--rust);
+    text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;
+  }
+  .fcard h3{font-size:16px;font-family:'Space Grotesk',sans-serif;font-weight:600;margin-bottom:8px;color:var(--paper);}
+  .fcard p{font-size:13.5px;color:var(--text-dim);margin:0;}
+
+  /* ---------- MOCKUPS ---------- */
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  @media(max-width:760px){.compare{grid-template-columns:1fr;}}
+  .phone{
+    background:var(--paper);
+    color:var(--ink);
+    border-radius:14px;
+    padding:20px 18px;
+    min-height:320px;
+    display:flex;flex-direction:column;
+    gap:10px;
+    border:1px solid var(--line);
+  }
+  .phone .tag{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;
+    letter-spacing:0.06em;color:var(--marigold-dim);margin-bottom:4px;
+  }
+  .compare .phone.proposed .tag{color:var(--teal);}
+  .field{
+    background:var(--paper-dim);
+    border:1px solid rgba(20,26,41,0.14);
+    border-radius:6px;
+    padding:10px 12px;
+    font-size:12.5px;
+    color:#5b5445;
+  }
+  .btn{
+    margin-top:auto;
+    background:var(--ink);
+    color:var(--paper);
+    border-radius:6px;
+    padding:12px;
+    text-align:center;
+    font-size:13.5px;
+    font-weight:600;
+  }
+  .btn.upi{background:var(--teal);color:#0d2b21;}
+  .upi-row{display:flex;gap:8px;margin-top:4px;}
+  .upi-row .chip{
+    flex:1;background:var(--paper-dim);border:1px solid rgba(20,26,41,0.14);
+    border-radius:6px;padding:8px;text-align:center;font-size:11px;color:#5b5445;
+  }
+
+  /* ---------- PRD ---------- */
+  .prd{
+    background:var(--ink-soft);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:36px 34px;
+  }
+  .prd-head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
+  .prd-head h3{font-size:20px;color:var(--paper);}
+  .prd-head .mono{font-size:11.5px;color:var(--text-dim);}
+  .prd-block{margin-bottom:22px;}
+  .prd-block:last-child{margin-bottom:0;}
+  .prd-block .k{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;
+    color:var(--marigold);margin-bottom:8px;
+  }
+  .prd-block p, .prd-block li{font-size:14px;color:var(--text-dim);}
+  .prd-block ul{margin:0;padding-left:18px;}
+  .prd-block li{margin-bottom:6px;}
+  .metric-row{display:flex;gap:26px;flex-wrap:wrap;margin-top:6px;}
+  .metric{
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .metric .v{font-size:22px;color:var(--paper);font-weight:500;}
+  .metric .l{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;}
+
+  footer{padding:48px 0 80px;}
+  footer p{font-size:12.5px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;}
+  footer a{color:var(--marigold);text-decoration:none;border-bottom:1px solid var(--marigold-dim);}
+</style>
+</head>
+<body data-state="current">
+
+<div class="wrap">
+  <section class="hero">
+    <div class="eyebrow">Product Case Study · Growth &amp; Monetization</div>
+    <h1>Where <em>DailyPrime</em> readers<br>fall out of the funnel.</h1>
+    <p class="dek">A teardown of the free-to-paid conversion journey on a Times&nbsp;Prime–style news subscription product — and a scoped fix, written up as a real PRD, projected to lift paywall conversion by 15%.</p>
+    <div class="byline">
+      <span><b>Role</b> · Product Owner</span>
+      <span><b>Focus</b> · Funnel Analysis, CRO</span>
+      <span><b>Output</b> · Mock PRD</span>
+    </div>
+  </section>
+
+  <section class="section" id="funnel-section">
+    <div class="section-label">01 — The Funnel</div>
+    <h2>Five readers start. Fewer than one converts.</h2>
+    <p class="lead">Toggle between the current checkout flow and the proposed One-Click UPI Upsell to see where the leak gets patched. Numbers are modeled on 50,000 monthly paywall encounters.</p>
+
+    <div class="toggle-row">
+      <div class="toggle" id="toggle" role="button" aria-label="Toggle funnel state">
+        <div class="pill"></div>
+        <span class="s-current">Current Flow</span>
+        <span class="s-proposed">With UPI Upsell</span>
+      </div>
+      <span class="toggle-tag" id="toggle-tag">Multi-field checkout, card-only</span>
+    </div>
+
+    <div class="funnel">
+      <div class="fstage">
+        <div class="flabel">Free article read</div>
+        <div class="fbar-track"><div class="fbar" data-target="100"></div></div>
+        <div class="fnum">50,000<small>baseline</small></div>
+      </div>
+      <div class="fstage">
+        <div class="flabel">Hits paywall</div>
+        <div class="fbar-track"><div class="fbar" data-target="100"></div></div>
+        <div class="fnum">50,000<small>100%</small></div>
+      </div>
+      <div class="leak">intrusive interstitial ads shown before paywall — no drop modeled here, but flagged as a friction point below</div>
+
+      <div class="fstage">
+        <div class="flabel">Starts checkout</div>
+        <div class="fbar-track"><div class="fbar" data-target="0" id="bar-checkout"></div></div>
+        <div class="fnum" id="num-checkout">–</div>
+      </div>
+      <div class="leak" id="leak-checkout">80% bounce at paywall — no UPI shown, card-first CTA reads as a bigger ask</div>
+
+      <div class="fstage">
+        <div class="flabel">Completes payment</div>
+        <div class="fbar-track"><div class="fbar" data-target="0" id="bar-paid"></div></div>
+        <div class="fnum" id="num-paid">–</div>
+      </div>
+      <div class="leak" id="leak-paid">60% of checkout starters abandon an 8-field card form</div>
+    </div>
+
+    <div class="lift-banner" id="lift-banner">
+      Current paywall → paid conversion: <b>8.0%</b> (4,000 subscribers/mo)
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">02 — The Friction</div>
+    <h2>Three points where the reader gives up.</h2>
+    <p class="lead">Pulled from session-recording patterns typical of card-only, form-heavy checkout on Indian mobile traffic.</p>
+    <div class="friction-grid">
+      <div class="fcard">
+        <div class="ftag">Friction 01</div>
+        <h3>8-field card form</h3>
+        <p>Name, email, phone, billing address, card number, expiry, CVV, OTP — each additional field measurably compounds drop-off on mobile.</p>
+      </div>
+      <div class="fcard">
+        <div class="ftag">Friction 02</div>
+        <h3>No UPI at the paywall</h3>
+        <p>UPI is the default payment habit for most Indian mobile readers. Card-only checkout forces an unfamiliar, higher-friction path.</p>
+      </div>
+      <div class="fcard">
+        <div class="ftag">Friction 03</div>
+        <h3>Ad-heavy pre-paywall load</h3>
+        <p>Interstitials before the paywall slow load time and prime readers to bounce before they even see the offer.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">03 — The Fix</div>
+    <h2>Checkout, compressed to one tap.</h2>
+    <p class="lead">The proposed fix doesn't rebuild the funnel — it removes seven fields from it.</p>
+    <div class="compare">
+      <div class="phone current">
+        <div class="tag">Current</div>
+        <div class="field">Full name</div>
+        <div class="field">Email address</div>
+        <div class="field">Phone number</div>
+        <div class="field">Billing address</div>
+        <div class="field">Card number · expiry · CVV</div>
+        <div class="btn">Subscribe — ₹1,299/yr</div>
+      </div>
+      <div class="phone proposed">
+        <div class="tag">Proposed</div>
+        <div class="field">Mobile number (pre-filled)</div>
+        <div class="upi-row">
+          <div class="chip">GPay</div>
+          <div class="chip">PhonePe</div>
+          <div class="chip">Paytm</div>
+        </div>
+        <div style="flex:1"></div>
+        <div class="btn upi">Pay ₹1,299 with UPI — 1 tap</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="border-bottom:none;">
+    <div class="section-label">04 — The PRD</div>
+    <h2>Written up the way I'd hand it to engineering.</h2>
+    <div class="prd">
+      <div class="prd-head">
+        <h3>One-Click UPI Upsell</h3>
+        <span class="mono">DRAFT · v0.3</span>
+      </div>
+      <div class="prd-block">
+        <div class="k">Problem</div>
+        <p>92% of readers who hit the paywall never convert. Session data suggests the checkout form, not the offer itself, is the primary drop-off point — most acutely between checkout start and payment completion.</p>
+      </div>
+      <div class="prd-block">
+        <div class="k">Goal</div>
+        <p>Replace the card-first checkout form with a single UPI-based one-tap payment at the paywall moment, for logged-in mobile readers with a verified number.</p>
+      </div>
+      <div class="prd-block">
+        <div class="k">Success metric</div>
+        <div class="metric-row">
+          <div class="metric"><div class="v">8.0% → 9.2%</div><div class="l">Paywall → Paid Conversion</div></div>
+          <div class="metric"><div class="v">+15%</div><div class="l">Relative Lift</div></div>
+          <div class="metric"><div class="v">+600</div><div class="l">Incremental Subs / Mo</div></div>
+        </div>
+      </div>
+      <div class="prd-block">
+        <div class="k">Requirements</div>
+        <ul>
+          <li>Detect UPI-linked apps on device; surface GPay / PhonePe / Paytm as primary CTAs above the card option.</li>
+          <li>Pre-fill mobile number for logged-in users; collapse the form to one visible field.</li>
+          <li>Fall back to the existing card flow for desktop and non-UPI users — no regression for that segment.</li>
+          <li>Log funnel events at each stage (paywall_view, checkout_start, payment_complete) split by payment method for post-launch analysis.</li>
+        </ul>
+      </div>
+      <div class="prd-block">
+        <div class="k">Out of scope</div>
+        <p>Redesigning the ad load before the paywall, and any change to subscription pricing tiers — tracked as separate workstreams.</p>
+      </div>
+      <div class="prd-block">
+        <div class="k">Risks</div>
+        <ul>
+          <li>UPI transaction failures on bank-side timeouts could look like product-side drop-off — needs separate error-state tracking, not lumped into abandonment.</li>
+          <li>Desktop traffic (~30% of paywall hits) sees no benefit from this change and needs its own follow-up.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Case study by Alice Singhal — built as a working prototype, numbers are modeled for illustration.<br>Toggle above is live; view source on <a href="https://github.com/alice-verse" target="_blank">GitHub</a>.</p>
+  </footer>
+</div>
+
+<script>
+  const body = document.body;
+  const toggle = document.getElementById('toggle');
+  const tag = document.getElementById('toggle-tag');
+  const barCheckout = document.getElementById('bar-checkout');
+  const barPaid = document.getElementById('bar-paid');
+  const numCheckout = document.getElementById('num-checkout');
+  const numPaid = document.getElementById('num-paid');
+  const leakCheckout = document.getElementById('leak-checkout');
+  const leakPaid = document.getElementById('leak-paid');
+  const liftBanner = document.getElementById('lift-banner');
+
+  const data = {
+    current: {
+      checkoutPct: 20, checkoutN: '10,000', checkoutSub:'20% of paywall hits',
+      paidPct: 40, paidN: '4,000', paidSub:'8.0% of paywall hits',
+      tag: 'Multi-field checkout, card-only',
+      leakCheckout: '80% bounce at paywall — no UPI shown, card-first CTA reads as a bigger ask',
+      leakPaid: '60% of checkout starters abandon an 8-field card form',
+      banner: 'Current paywall → paid conversion: <b>8.0%</b> (4,000 subscribers/mo)'
+    },
+    proposed: {
+      checkoutPct: 21, checkoutN: '10,500', checkoutSub:'21% of paywall hits',
+      paidPct: 43.8, paidN: '4,600', paidSub:'9.2% of paywall hits',
+      tag: 'One-tap UPI, pre-filled number',
+      leakCheckout: 'still ~79% pass on checkout — CTA change alone has modest effect here',
+      leakPaid: 'only 56% now drop — one field instead of eight closes most of the gap',
+      banner: 'Proposed paywall → paid conversion: <b>9.2%</b> (4,600 subscribers/mo) — <b>+15% relative lift</b>'
+    }
+  };
+
+  function render(state){
+    const d = data[state];
+    barCheckout.style.width = d.checkoutPct + '%';
+    barPaid.style.width = d.paidPct + '%';
+    numCheckout.innerHTML = d.checkoutN + '<small>' + d.checkoutSub + '</small>';
+    numPaid.innerHTML = d.paidN + '<small>' + d.paidSub + '</small>';
+    tag.textContent = d.tag;
+    leakCheckout.textContent = d.leakCheckout;
+    leakPaid.textContent = d.leakPaid;
+    leakPaid.classList.toggle('leak-fixed', state==='proposed');
+    liftBanner.innerHTML = d.banner;
+  }
+
+  toggle.addEventListener('click', () => {
+    const next = body.getAttribute('data-state') === 'current' ? 'proposed' : 'current';
+    body.setAttribute('data-state', next);
+    render(next);
+  });
+
+  // init bars at 0 then animate to current state on load
+  render('current');
+  requestAnimationFrame(()=> {
+    document.querySelectorAll('.fbar[data-target="100"]').forEach(b=> b.style.width='100%');
+  });
+</script>
+</body>
+</html>
