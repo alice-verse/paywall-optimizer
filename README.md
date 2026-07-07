@@ -42,7 +42,7 @@ Just open `index.html` in a browser. No server or build process required.
 
 This is a static single-file site, so any static host works:
 
-- **Netlify Drop:** drag `index.html` onto [app.netlify.com/drop](https://app.netlify.com/drop)
+- **Netlify Drop:** drag `index.html` onto https://paywalloptimiser.netlify.app/
 - **GitHub Pages:** push to a repo, enable Pages, and point it at the root
 - **Vercel:** import the repo and deploy with no build command
 
